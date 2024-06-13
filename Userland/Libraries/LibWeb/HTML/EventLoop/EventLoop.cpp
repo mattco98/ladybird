@@ -176,6 +176,7 @@ void EventLoop::process()
     [[maybe_unused]] bool has_a_rendering_opportunity = false;
 
     // FIXME: 10. Let now be the current high resolution time. [HRT]
+    auto now = HighResolutionTime::unsafe_shared_current_time();
 
     // FIXME: 11. If oldestTask is not null, then:
 
@@ -259,6 +260,7 @@ void EventLoop::process()
     // 10. For each fully active Document in docs, update animations and send events for that Document, passing in now as the timestamp. [WEBANIMATIONS]
     // Note: This is handled by the document's animation timer, however, if a document has any requestAnimationFrame callbacks, we need
     //       to dispatch events before that happens below. Not dispatching here would be observable.
+    // FIXME: "now", as the spec defines it, does not produce the expected timestamps. For now, performance()->now() is good enough
     for_each_fully_active_document_in_docs([&](DOM::Document& document) {
         if (document.window()->animation_frame_callback_driver().has_callbacks()) {
             document.update_animations_and_send_events(document.window()->performance()->now());
@@ -269,10 +271,10 @@ void EventLoop::process()
 
     // FIXME:     12. For each fully active Document in docs, if the user agent detects that the backing storage associated with a CanvasRenderingContext2D or an OffscreenCanvasRenderingContext2D, context, has been lost, then it must run the context lost steps for each such context:
 
-    // FIXME:     13. For each fully active Document in docs, run the animation frame callbacks for that Document, passing in now as the timestamp.
-    auto now = HighResolutionTime::unsafe_shared_current_time();
+    // 13. For each fully active Document in docs, run the animation frame callbacks for that Document, passing in now as the timestamp.
+    // FIXME: See the FIXME in step 10
     for_each_fully_active_document_in_docs([&](DOM::Document& document) {
-        run_animation_frame_callbacks(document, now);
+        run_animation_frame_callbacks(document, document.window()->performance()->now());
     });
 
     // FIXME: This step is implemented following the latest specification, while the rest of this method uses an outdated spec.
