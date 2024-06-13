@@ -12,6 +12,7 @@
 #include <LibWeb/HTML/WindowOrWorkerGlobalScope.h>
 #include <LibWeb/UserTiming/PerformanceMark.h>
 #include <LibWeb/UserTiming/PerformanceMeasure.h>
+#include <LibWeb/NavigationTiming/PerformanceTiming.h>
 
 namespace Web::HighResolutionTime {
 
@@ -24,6 +25,7 @@ public:
 
     double now() const { return static_cast<double>(m_timer.elapsed_time().to_nanoseconds()) / 1e6; }
     double time_origin() const;
+    double unix_time() const { return now() + time_origin(); }
 
     JS::GCPtr<NavigationTiming::PerformanceTiming> timing();
 
@@ -35,6 +37,8 @@ public:
     WebIDL::ExceptionOr<Vector<JS::Handle<PerformanceTimeline::PerformanceEntry>>> get_entries() const;
     WebIDL::ExceptionOr<Vector<JS::Handle<PerformanceTimeline::PerformanceEntry>>> get_entries_by_type(String const& type) const;
     WebIDL::ExceptionOr<Vector<JS::Handle<PerformanceTimeline::PerformanceEntry>>> get_entries_by_name(String const& name, Optional<String> type) const;
+
+    void set_performance_timing_field(void (NavigationTiming::PerformanceTiming::*)(u64), Optional<u64  > unix_time = {});
 
 private:
     explicit Performance(JS::Realm&);

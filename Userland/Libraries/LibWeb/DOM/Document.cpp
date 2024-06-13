@@ -3308,7 +3308,7 @@ void Document::set_browsing_context(HTML::BrowsingContext* browsing_context)
 }
 
 // https://html.spec.whatwg.org/multipage/document-lifecycle.html#unload-a-document
-void Document::unload(JS::GCPtr<Document>)
+void Document::unload(JS::GCPtr<Document> new_document)
 {
     auto& vm = this->vm();
 
@@ -3359,7 +3359,29 @@ void Document::unload(JS::GCPtr<Document>)
         // FIXME: The legacy target override flag is currently set by a virtual override of dispatch_event()
         //        We should reorganize this so that the flag appears explicitly here instead.
         auto event = DOM::Event::create(realm(), HTML::EventNames::unload);
+
+        auto performance = new_document->window()->performance();
+        auto new_document_has_same_origin = origin() == new_document->origin();
+
+        // https://www.w3.org/TR/navigation-timing/#dom-performancetiming-unloadeventstart
+        // If the previous document and the current document have the same origin [IETF RFC 6454], this attribute must return the time immediately before the user agent starts the unload event of
+        // the previous document. If there is no previous document or the previous document has a different origin than the current document, this attribute must return zero.
+        u64 unload_event_start_time = 0;
+        if (new_document_has_same_origin)
+            unload_event_start_time = static_cast<u64>(performance->unix_time());
+
+
         global_object().dispatch_event(event);
+
+        // https://www.w3.org/TR/navigation-timing/#dom-performancetiming-unloadeventend
+        // If the previous document and the current document have the same same origin, this attribute must return the time immediately after the user agent finishes the unload event of the previous
+        // document. If there is no previous document or the previous document has a different origin than the current document or the unload is not yet completed, this attribute must return zero.
+        u64 unload_event_end_time = 0;
+        if (new_document_has_same_origin)
+            unload_event_end_time = static_cast<u64>(performance->unix_time());
+
+        performance->set_performance_timing_field(&NavigationTiming::PerformanceTiming::set_unload_event_start, unload_event_start_time);
+        performance->set_performance_timing_field(&NavigationTiming::PerformanceTiming::set_unload_event_end, unload_event_end_time);
     }
 
     // FIXME: 13. If unloadTimingInfo is not null, then set unloadTimingInfo's unload event end time to the current high resolution time given newDocument's relevant global object, coarsened

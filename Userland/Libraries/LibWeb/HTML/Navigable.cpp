@@ -30,9 +30,11 @@
 #include <LibWeb/HTML/TraversableNavigable.h>
 #include <LibWeb/HTML/Window.h>
 #include <LibWeb/HTML/WindowProxy.h>
+#include <LibWeb/HighResolutionTime/Performance.h>
 #include <LibWeb/Infra/Strings.h>
 #include <LibWeb/Layout/Node.h>
 #include <LibWeb/Loader/GeneratedPagesLoader.h>
+#include <LibWeb/NavigationTiming/PerformanceTiming.h>
 #include <LibWeb/Page/Page.h>
 #include <LibWeb/Painting/Paintable.h>
 #include <LibWeb/Painting/ViewportPaintable.h>
@@ -1380,6 +1382,13 @@ WebIDL::ExceptionOr<void> Navigable::navigate(NavigateParams params)
         }
 
         // FIXME: 1. Let unloadPromptCanceled be the result of checking if unloading is user-canceled for navigable's active document's inclusive descendant navigables.
+
+        // https://www.w3.org/TR/navigation-timing/#dom-performancetiming-navigationstart
+        // This attribute must return the time immediately after the user agent finishes prompting to unload the previous document. If there is no previous document, this attribute must return the same value as fetchStart.
+        //
+        // NOTE: The "prompting to unload" algorithm is now the above "checking if unloading is (user-)canceled" algorithm
+        dbgln("nav start time = {}", active_window()->performance()->unix_time());
+        active_window()->performance()->set_performance_timing_field(&NavigationTiming::PerformanceTiming::set_navigation_start);
 
         // FIXME: 2. If unloadPromptCanceled is true, or navigable's ongoing navigation is no longer navigationId, then:
         if (!ongoing_navigation().has<String>() || ongoing_navigation().get<String>() != navigation_id) {

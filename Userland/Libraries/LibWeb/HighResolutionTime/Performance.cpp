@@ -14,7 +14,6 @@
 #include <LibWeb/HighResolutionTime/Performance.h>
 #include <LibWeb/HighResolutionTime/TimeOrigin.h>
 #include <LibWeb/NavigationTiming/EntryNames.h>
-#include <LibWeb/NavigationTiming/PerformanceTiming.h>
 #include <LibWeb/PerformanceTimeline/EntryTypes.h>
 
 namespace Web::HighResolutionTime {
@@ -338,6 +337,11 @@ WebIDL::ExceptionOr<Vector<JS::Handle<PerformanceTimeline::PerformanceEntry>>> P
     // method input name parameter, and type set to null if optional entryType is omitted, or set to the method's input type
     // parameter otherwise.
     return TRY_OR_THROW_OOM(vm, window_or_worker().filter_buffer_map_by_name_and_type(name, type));
+}
+
+void Performance::set_performance_timing_field(void (NavigationTiming::PerformanceTiming::*setter)(u64), Optional<u64> unix_time)
+{
+    (*timing().*setter)(unix_time.value_or(static_cast<u64>(this->unix_time())));
 }
 
 HTML::WindowOrWorkerGlobalScopeMixin& Performance::window_or_worker()
