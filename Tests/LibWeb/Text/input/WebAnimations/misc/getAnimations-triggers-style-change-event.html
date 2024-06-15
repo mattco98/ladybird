@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<style>
+    @keyframes anim {
+        to {
+            opacity: 0;
+        }
+    }
+</style>
+<div id="foo"></div>
+<script src="../../include.js"></script>
+<script>
+    test(() => {
+        const div = document.getElementById("foo");
+        div.style.animation = "anim 1s";
+        println(`animation count: ${div.getAnimations().length}`);
+    });
+</script>

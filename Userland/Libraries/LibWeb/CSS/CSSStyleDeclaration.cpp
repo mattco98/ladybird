@@ -197,6 +197,8 @@ void ElementInlineCSSStyleDeclaration::update_style_attribute()
 
     // 6. Unset declaration block’s updating flag.
     m_updating = false;
+
+    m_element->invalidate_style();
 }
 
 // https://drafts.csswg.org/cssom/#set-a-css-declaration
