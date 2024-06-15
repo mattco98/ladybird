@@ -98,6 +98,7 @@ static NonnullRefPtr<StyleValue const> style_value_for_background_property(Layou
 
 static NonnullRefPtr<StyleValue const> style_value_for_length_percentage(LengthPercentage const& length_percentage)
 {
+    dbgln("length percentage = {}", length_percentage.to_string());
     if (length_percentage.is_auto())
         return IdentifierStyleValue::create(ValueID::Auto);
     if (length_percentage.is_percentage())

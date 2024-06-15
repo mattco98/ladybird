@@ -61,6 +61,7 @@ CSSPixels Length::font_relative_length_to_px(Length::FontMetrics const& font_met
 {
     switch (m_type) {
     case Type::Em:
+        // dbgln("len = {}, font_size = {}", m_value, font_metrics.font_size.to_double());
         return CSSPixels::nearest_value_for(m_value * font_metrics.font_size.to_double());
     case Type::Rem:
         return CSSPixels::nearest_value_for(m_value * root_font_metrics.font_size.to_double());

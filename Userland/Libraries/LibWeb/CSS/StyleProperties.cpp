@@ -46,11 +46,15 @@ bool StyleProperties::is_property_inherited(CSS::PropertyID property_id) const
 
 void StyleProperties::set_property(CSS::PropertyID id, NonnullRefPtr<StyleValue const> value, CSS::CSSStyleDeclaration const* source_declaration, Inherited inherited, Important important)
 {
+    if (id == PropertyID::MarginLeft)
+        dbgln("[{:p}] setting marginLeft to {}", this, value->to_string());
     m_property_values[to_underlying(id)] = StyleAndSourceDeclaration { move(value), source_declaration, important, inherited };
 }
 
 void StyleProperties::set_animated_property(CSS::PropertyID id, NonnullRefPtr<StyleValue const> value)
 {
+    if (id == PropertyID::MarginLeft)
+        dbgln("[{:p}] (animated) setting marginLeft to {}", this, value->to_string());
     m_animated_property_values.set(id, move(value));
 }
 
@@ -126,6 +130,8 @@ LengthPercentage StyleProperties::length_percentage_or_fallback(CSS::PropertyID 
 Optional<LengthPercentage> StyleProperties::length_percentage(CSS::PropertyID id) const
 {
     auto value = property(id);
+    if (id == PropertyID::MarginLeft)
+        dbgln("[{:p}] left = {}", this, value->to_string());
 
     if (value->is_calculated())
         return LengthPercentage { const_cast<CalculatedStyleValue&>(value->as_calculated()) };
@@ -187,6 +193,7 @@ CSSPixels StyleProperties::compute_line_height(CSSPixelRect const& viewport_rect
         if (!line_height_length.is_auto())
             return line_height_length.to_px(viewport_rect, font_metrics, root_font_metrics);
     }
+
 
     if (line_height->is_number())
         return Length(line_height->as_number().number(), Length::Type::Em).to_px(viewport_rect, font_metrics, root_font_metrics);

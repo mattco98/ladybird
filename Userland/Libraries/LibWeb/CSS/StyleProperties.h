@@ -49,9 +49,42 @@ public:
         Important important { Important::No };
         Inherited inherited { Inherited::No };
     };
-    using PropertyValues = Array<StyleAndSourceDeclaration, to_underlying(CSS::last_property_id) + 1>;
+    // using PropertyValues = Array<StyleAndSourceDeclaration, to_underlying(CSS::last_property_id) + 1>;
+    class PropertyValues {
+    public:
+        template<bool IsConst>
+        class Proxy {
+            template<typename T>
+            using Constify = Conditional<IsConst, T const, T>;
+        public:
+            Proxy(Constify<PropertyValues&> values, size_t index)
+                : m_values(values)
+                , m_index(index)
+            {
+            }
 
-    auto& properties() { return m_property_values; }
+            operator Constify<StyleAndSourceDeclaration&>() { return m_values.m_props[m_index]; }
+
+            Proxy& operator=(StyleAndSourceDeclaration const& other) requires(!IsConst)
+            {
+                m_values.m_props[m_index] = other;
+                return *this;
+            }
+
+        private:
+            PropertyValues& m_values;
+            size_t m_index;
+        };
+
+        auto operator[](size_t index) { return Proxy<false> { *this, index }; }
+        auto operator[](size_t index) const { return Proxy<true> { *this, index }; }
+        auto size() const { return m_props.size(); }
+
+    private:
+        Array<StyleAndSourceDeclaration, to_underlying(CSS::last_property_id) + 1> m_props;
+    };
+
+    // auto& properties() { return m_property_values; }
     auto const& properties() const { return m_property_values; }
 
     HashMap<CSS::PropertyID, NonnullRefPtr<StyleValue const>> const& animated_property_values() const { return m_animated_property_values; }
