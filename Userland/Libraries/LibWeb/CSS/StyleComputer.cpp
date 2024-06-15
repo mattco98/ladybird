@@ -1664,38 +1664,38 @@ void StyleComputer::compute_cascaded_values(StyleProperties& style, DOM::Element
     }();
 
     if (animation_name.has_value()) {
-        if (auto source_declaration = style.property_source_declaration(PropertyID::AnimationName); source_declaration) {
-            auto& realm = element.realm();
+        auto& realm = element.realm();
+        auto source_declaration = style.property_source_declaration(PropertyID::AnimationName);
+        auto existing_animation = element.cached_animation_name_animation();
 
-            if (source_declaration != element.cached_animation_name_source()) {
-                // This animation name is new, so we need to create a new animation for it.
-                if (auto existing_animation = element.cached_animation_name_animation())
-                    existing_animation->cancel(Animations::Animation::ShouldInvalidate::No);
-                element.set_cached_animation_name_source(source_declaration);
+        if (source_declaration != element.cached_animation_name_source() || (existing_animation && existing_animation->id() != animation_name.value())) {
+            // This animation name is new, so we need to create a new animation for it.
+            if (existing_animation)
+                existing_animation->cancel(Animations::Animation::ShouldInvalidate::No);
+            element.set_cached_animation_name_source(source_declaration);
 
-                auto effect = Animations::KeyframeEffect::create(realm);
-                auto animation = CSSAnimation::create(realm);
-                animation->set_id(animation_name.release_value());
-                animation->set_timeline(m_document->timeline());
-                animation->set_owning_element(element);
-                animation->set_effect(effect);
-                apply_animation_properties(m_document, style, animation);
-                if (pseudo_element.has_value())
-                    effect->set_pseudo_element(Selector::PseudoElement { pseudo_element.value() });
+            auto effect = Animations::KeyframeEffect::create(realm);
+            auto animation = CSSAnimation::create(realm);
+            animation->set_id(animation_name.release_value());
+            animation->set_timeline(m_document->timeline());
+            animation->set_owning_element(element);
+            animation->set_effect(effect);
+            apply_animation_properties(m_document, style, animation);
+            if (pseudo_element.has_value())
+                effect->set_pseudo_element(Selector::PseudoElement { pseudo_element.value() });
 
-                auto const& rule_cache = rule_cache_for_cascade_origin(CascadeOrigin::Author);
-                if (auto keyframe_set = rule_cache.rules_by_animation_keyframes.get(animation->id()); keyframe_set.has_value())
-                    effect->set_key_frame_set(keyframe_set.value());
+            auto const& rule_cache = rule_cache_for_cascade_origin(CascadeOrigin::Author);
+            if (auto keyframe_set = rule_cache.rules_by_animation_keyframes.get(animation->id()); keyframe_set.has_value())
+                effect->set_key_frame_set(keyframe_set.value());
 
-                effect->set_target(&element);
-                element.set_cached_animation_name_animation(animation);
+            effect->set_target(&element);
+            element.set_cached_animation_name_animation(animation);
 
-                HTML::TemporaryExecutionContext context(m_document->relevant_settings_object());
-                animation->play().release_value_but_fixme_should_propagate_errors();
-            } else {
-                // The animation hasn't changed, but some properties of the animation may have
-                apply_animation_properties(m_document, style, *element.cached_animation_name_animation());
-            }
+            HTML::TemporaryExecutionContext context(m_document->relevant_settings_object());
+            animation->play().release_value_but_fixme_should_propagate_errors();
+        } else if (existing_animation) {
+            // The animation hasn't changed, but some properties of the animation may have
+            apply_animation_properties(m_document, style, *existing_animation);
         }
     } else {
         // If the element had an existing animation, cancel it
