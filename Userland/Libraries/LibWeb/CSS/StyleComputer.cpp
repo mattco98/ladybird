@@ -31,6 +31,7 @@
 #include <LibWeb/CSS/CSSFontFaceRule.h>
 #include <LibWeb/CSS/CSSImportRule.h>
 #include <LibWeb/CSS/CSSStyleRule.h>
+#include <LibWeb/CSS/CSSTransition.h>
 #include <LibWeb/CSS/Parser/Parser.h>
 #include <LibWeb/CSS/SelectorEngine.h>
 #include <LibWeb/CSS/StyleComputer.h>
@@ -1903,6 +1904,72 @@ void StyleComputer::compute_cascaded_values(StyleProperties& style, DOM::Element
             }
 
             element.add_transitioned_properties(move(properties), move(delays), move(durations), move(timing_functions));
+        }
+    }
+
+    if (auto const* previous_style = element.computed_css_values()) {
+        for (auto i = to_underlying(CSS::first_longhand_property_id); i <= to_underlying(CSS::last_longhand_property_id); ++i) {
+            auto property_id = static_cast<CSS::PropertyID>(i);
+            auto transition_attributes = element.property_transition_attributes(property_id);
+            if (!transition_attributes.has_value())
+                continue;
+
+            auto old_value = previous_style->maybe_null_property(property_id);
+            auto new_value = style.maybe_null_property(property_id);
+            if (!old_value && !new_value)
+                continue;
+
+            if (old_value && new_value && *old_value == *new_value)
+                continue;
+
+            // Cancel existing transition for this property, if applicable
+            if (auto transition = element.property_transition(property_id)) {
+                transition->cancel();
+                element.disassociate_with_animation(*transition);
+                if (auto existing_effect = transition->effect()) {
+                    if (existing_effect->is_keyframe_effect())
+                        static_cast<Animations::KeyframeEffect&>(*existing_effect).set_target({});
+                }
+            }
+
+            // Create the transition and add it to the animations vector so element.get_animations() doesn't need to be called again
+            auto transition = CSS::CSSTransition::create(realm, property_id, document().transition_generation());
+            animations.append(transition);
+
+            auto effect = Animations::KeyframeEffect::create(realm);
+            effect->set_target(&element);
+            effect->set_start_delay(transition_attributes->delay);
+            effect->set_iteration_duration(transition_attributes->duration);
+            effect->set_timing_function(transition_attributes->timing_function);
+
+            auto key_frame_set = adopt_ref(*new Animations::KeyframeEffect::KeyFrameSet);
+            Animations::KeyframeEffect::KeyFrameSet::ResolvedKeyFrame initial_keyframe;
+            if (old_value) {
+                initial_keyframe.properties.set(property_id, CSS::ValueComparingNonnullRefPtr<StyleValue const> { *old_value });
+            } else {
+                initial_keyframe.properties.set(property_id, Animations::KeyframeEffect::KeyFrameSet::UseInitial {});
+            }
+
+            Animations::KeyframeEffect::KeyFrameSet::ResolvedKeyFrame final_keyframe;
+            if (new_value) {
+                final_keyframe.properties.set(property_id, CSS::ValueComparingNonnullRefPtr<StyleValue const> { *new_value });
+            } else {
+                final_keyframe.properties.set(property_id, Animations::KeyframeEffect::KeyFrameSet::UseInitial {});
+            }
+
+            key_frame_set->keyframes_by_key.insert(0, initial_keyframe);
+            key_frame_set->keyframes_by_key.insert(100 * Animations::KeyframeEffect::AnimationKeyFrameKeyScaleFactor, final_keyframe);
+
+            effect->set_key_frame_set(key_frame_set);
+            transition->set_timeline(m_document->timeline());
+            transition->set_owning_element(element);
+            transition->set_effect(effect);
+            transition->set_cached_declaration(style.property_source_declaration(property_id));
+            element.associate_with_animation(transition);
+            element.set_transition(property_id, transition);
+
+            HTML::TemporaryExecutionContext context(m_document->relevant_settings_object());
+            transition->play().release_value_but_fixme_should_propagate_errors();
         }
     }
 }
