@@ -8,6 +8,8 @@
 #include <LibWeb/Animations/Animatable.h>
 #include <LibWeb/Animations/Animation.h>
 #include <LibWeb/Animations/DocumentTimeline.h>
+#include <LibWeb/CSS/StyleValues/EasingStyleValue.h>
+#include <LibWeb/CSS/StyleValues/TimeStyleValue.h>
 #include <LibWeb/DOM/Document.h>
 #include <LibWeb/DOM/Element.h>
 
@@ -99,11 +101,57 @@ void Animatable::disassociate_with_animation(JS::NonnullGCPtr<Animation> animati
     m_associated_animations.remove_first_matching([&](auto element) { return animation == element; });
 }
 
+void Animatable::add_transitioned_properties(Vector<Vector<CSS::PropertyID>> properties, CSS::StyleValueVector delays, CSS::StyleValueVector durations, CSS::StyleValueVector timing_functions)
+{
+    VERIFY(properties.size() == delays.size());
+    VERIFY(properties.size() == durations.size());
+    VERIFY(properties.size() == timing_functions.size());
+
+    for (size_t i = 0; i < properties.size(); i++) {
+        size_t index_of_this_transition = m_transition_attributes.size();
+        auto delay = delays[i]->is_time() ? delays[i]->as_time().time().to_milliseconds() : 0;
+        auto duration = durations[i]->is_time() ? durations[i]->as_time().time().to_milliseconds() : 0;
+        auto timing_function = timing_functions[i]->is_easing() ? timing_functions[i]->as_easing().function() : CSS::EasingStyleValue::CubicBezier::ease();
+        VERIFY(timing_functions[i]->is_easing());
+        m_transition_attributes.empend(delay, duration, timing_function);
+
+        for (auto const& property : properties[i])
+            m_transition_attribute_indices.set(property, index_of_this_transition);
+    }
+}
+
+Optional<Animatable::TransitionAttributes const&> Animatable::property_transition_attributes(CSS::PropertyID property) const
+{
+    if (auto maybe_index = m_transition_attribute_indices.get(property); maybe_index.has_value())
+        return m_transition_attributes[maybe_index.value()];
+    return {};
+}
+
+JS::GCPtr<Animation> Animatable::property_transition(CSS::PropertyID property) const
+{
+    if (auto maybe_animation = m_associated_transitions.get(property); maybe_animation.has_value())
+        return maybe_animation.value();
+    return {};
+}
+
+void Animatable::set_transition(CSS::PropertyID property, JS::NonnullGCPtr<Animation> animation)
+{
+    VERIFY(!m_associated_transitions.contains(property));
+    m_associated_transitions.set(property, animation);
+}
+
+void Animatable::clear_transitions()
+{
+    m_transition_attribute_indices.clear();
+    m_transition_attributes.clear();
+}
+
 void Animatable::visit_edges(JS::Cell::Visitor& visitor)
 {
     visitor.visit(m_associated_animations);
     visitor.visit(m_cached_animation_name_source);
     visitor.visit(m_cached_animation_name_animation);
+    visitor.visit(m_associated_transitions);
 }
 
 }
