@@ -5,6 +5,8 @@ CLion can integrate with CMake to provide code comprehension features.
 After opening the `ladybird` repository in CLion as a new project, the "`Open Project Wizard`" window will open.
 
 Select the `default` Preset in the `Settings -> Build, Execution and Deployment -> CMake` window and click the `Enable Profile` checkbox.
+Note that each enabled profile creates a new tab in the CMake window, and since the `Debug` profile is enabled by default, you should either
+disable this configuration or ensure you have switched to the correct tab.
 
 If the build complains that there is no `Default` Toolchain, go to the `Settings -> Build, Execution and Deployment -> Toolchains`
 tab and copy the currently defaulted host toolchain and rename it to `Default`. Make sure that the compiler chosen has a version of
