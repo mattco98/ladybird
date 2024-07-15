@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<link rel="match" href="reference/transition-basics-ref.html" />
+<style>
+    #box {
+        width: 200px;
+        height: 200px;
+        background-color: red;
+        position: absolute;
+        left: 0;
+        top: 0;
+
+        transition: left 1s linear, top 1s linear;
+    }
+
+    .move {
+        left: 200px;
+        top: 200px;
+    }
+</style>
+<div id="box"></div>
+<script>
+    console.log('BEFORE');
+    document.getElementById("box").classList.add("move");
+    requestAnimationFrame(() => {
+        console.log(`ELEMENT COUNT: ${document.getAnimations().length}`);
+        document.getAnimations().forEach(a => a.currentTime = 500);
+    })
+    console.log('AFTER');
+</script>
+</html>

@@ -169,13 +169,21 @@ Web::Layout::Viewport* PageClient::layout_root()
 void PageClient::process_screenshot_requests()
 {
     while (!m_screenshot_tasks.is_empty()) {
-        auto task = m_screenshot_tasks.dequeue();
-        if (task.node_id.has_value()) {
-            auto* dom_node = Web::DOM::Node::from_unique_id(*task.node_id);
+        dbgln("TAKING SCREENSHOT");
+        auto node_id = m_screenshot_tasks.head().node_id;
+        if (node_id.has_value()) {
+            auto* dom_node = Web::DOM::Node::from_unique_id(*node_id);
             if (!dom_node || !dom_node->paintable_box()) {
                 client().async_did_take_screenshot(m_id, {});
+                m_screenshot_tasks.dequeue();
                 continue;
             }
+
+            if (is<Web::DOM::Element>(dom_node) && static_cast<Web::DOM::Element*>(dom_node)->has_class("delay-screenshot"_fly_string)) {
+                dbgln("SKIPPING ELEMENT");
+                continue;
+            }
+
             auto rect = page().enclosing_device_rect(dom_node->paintable_box()->absolute_border_box_rect());
             auto bitmap = Gfx::Bitmap::create(Gfx::BitmapFormat::BGRA8888, rect.size().to_type<int>()).release_value_but_fixme_should_propagate_errors();
             auto backing_store = Web::Painting::BitmapBackingStore(*bitmap);
@@ -183,11 +191,19 @@ void PageClient::process_screenshot_requests()
             client().async_did_take_screenshot(m_id, bitmap->to_shareable_bitmap());
         } else {
             Web::DevicePixelRect rect { { 0, 0 }, content_size() };
+            if (auto* document = page().top_level_browsing_context().active_document()) {
+                if (is<Web::DOM::Element>(document->root()) && static_cast<Web::DOM::Element&>(document->root()).has_class("delay-screenshot"_fly_string)) {
+                    dbgln("SKIPPING DOC");
+                    continue;
+                }
+            }
             auto bitmap = Gfx::Bitmap::create(Gfx::BitmapFormat::BGRA8888, rect.size().to_type<int>()).release_value_but_fixme_should_propagate_errors();
             auto backing_store = Web::Painting::BitmapBackingStore(*bitmap);
             paint(rect, backing_store);
             client().async_did_take_screenshot(m_id, bitmap->to_shareable_bitmap());
         }
+
+        m_screenshot_tasks.dequeue();
     }
 }
 

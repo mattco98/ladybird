@@ -1916,6 +1916,9 @@ void StyleComputer::compute_cascaded_values(StyleProperties& style, DOM::Element
 
             auto old_value = previous_style->maybe_null_property(property_id);
             auto new_value = style.maybe_null_property(property_id);
+
+            dbgln("HERE!!! prop: {}", CSS::string_from_property_id(property_id));
+            dbgln("old value: {}, new value: {}", old_value ? old_value->to_string() : "<null>"_string, new_value ? new_value->to_string() : "<null>"_string);
             if (!old_value && !new_value)
                 continue;
 
